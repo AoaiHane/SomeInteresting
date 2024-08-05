@@ -93,7 +93,7 @@ namespace GameMain.Tools
             {
                 if(useMapping)
                 {
-                    _hardConfig = Vector3.up * (-Mathf.Min(mappingCurve.Evaluate(Mathf.Abs(rotateSpeed))),15)*(rotateSpeed > 0 ? 1 : -1);
+                    _hardConfig = Vector3.up * (-Mathf.Min(mappingCurve.Evaluate(Mathf.Abs(rotateSpeed)),15)*(rotateSpeed > 0 ? 1 : -1);
                 }
                 if (rotateCenter != null)
                 {
