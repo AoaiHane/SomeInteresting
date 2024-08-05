@@ -5,11 +5,19 @@ using UnityEngine;
 
 namespace GameMain.Tools
 {
+    public static class ConstFields
+    {
+        public const float PI = 3.1415f;
+        public const float PI2 = 6.283f;
+        public const float PI1_2 = 1.5708f;
+    }
     [Serializable]
     public struct RibbonNode
     {
         public float splitInterval;
         public float splitOffset;
+        public Vector3 pos;
+        public Quaternion rot;
     }
 
     public class RibbonSimulator : MonoBehaviour
@@ -18,17 +26,20 @@ namespace GameMain.Tools
         public float rotateSpeed;
         public float rotateRadius;
 
-        [Header("RibbonPart")] public RibbonNode[] roibbonNodes;
-        public float hard;
+        [Header("RibbonPart")] public RibbonNode[] ribbonNodes;
+        public AnimationCurve mappingCurve;
+        public bool useMapping = true;
 
         private List<Vector3> _splitPoints;
         private List<Transform> _splitTrans;
         private Transform _selfTrans;
+        private Vector3 _hardConfig;
+        private Vector3 _vParam;
 
         private void Start()
         {
             _selfTrans = transform;
-            int splitCount = roibbonNodes.Length;
+            int splitCount = ribbonNodes.Length;
             _splitTrans = new List<Transform>();
             _splitPoints = new List<Vector3>();
 
@@ -63,7 +74,7 @@ namespace GameMain.Tools
                 _startAddFirstConfigureOffset = !_startAddFirstConfigureOffset;
                 if (_startAddFirstConfigureOffset)
                 {
-                    roibbonNodes[0].splitOffset = 0;
+                    ribbonNodes[0].splitOffset = 0;
                 }
             }
         }
@@ -75,11 +86,15 @@ namespace GameMain.Tools
         {
             if (_startAddFirstConfigureOffset)
             {
-                roibbonNodes[0].splitOffset = ((roibbonNodes[0].splitOffset + Time.fixedDeltaTime) * hard);
+                ribbonNodes[0].splitOffset = ((ribbonNodes[0].splitOffset + Time.fixedDeltaTime));
             }
             
             if (_isStart)
             {
+                if(useMapping)
+                {
+                    _hardConfig = Vector3.up * (-Mathf.Min(mappingCurve.Evaluate(Mathf.Abs(rotateSpeed))),15)*(rotateSpeed > 0 ? 1 : -1);
+                }
                 if (rotateCenter != null)
                 {
                     _rotateParam = (_rotateParam + rotateSpeed / 100) % ConstFields.PI2;
@@ -92,10 +107,13 @@ namespace GameMain.Tools
                 for (int i = 0; i < _splitTrans.Count; i++)
                 {
                     var currentTrans = _splitTrans[i];
-                    var currentSplitConfig = roibbonNodes[i];
-
-                    currentTrans.rotation = Quaternion.LookRotation(lastTransPos - currentTrans.position);
-                    currentTrans.position = lastTransPos + lastTransRot *
+                    var currentSplitConfig = ribbonNodes[i];
+                    var direction = lastTransPos - currentTrans.position;
+                    if((direction.sqrMagnitued - 0) > 0.001f)
+                    {
+                        currentTrans.rotation = Quaternion.LookRotation(direction);
+                    }
+                    currentTrans.position = lastTransPos + (Quaternion.Euler(_hardConfig) * lastTransRot) *
                         ComputePos(currentSplitConfig.splitOffset - ConstFields.PI1_2, currentSplitConfig.splitInterval);
                     lastTransPos = currentTrans.position;
                     lastTransRot = currentTrans.rotation;
@@ -108,7 +126,10 @@ namespace GameMain.Tools
             var useRadian = radian % ConstFields.PI2;
             float x = -radius * Mathf.Cos(useRadian);
             float z = radius * Mathf.Sin(useRadian);
-            return new Vector3(x, 0, z);
+            _vParam.x = x;
+            _vParam.y = 0;
+            _vParam.z = z;
+            return _vParam;
         }
 
         private void OnDrawGizmos()
